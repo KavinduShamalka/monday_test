@@ -1,14 +1,16 @@
 use std::env;
 extern crate dotenv;
+use actix_web::dev::Response;
 use dotenv::dotenv;
 
+use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use mongodb::{
-    bson::extjson::de::Error,
-    results::InsertOneResult,
+    bson::{extjson::de::Error, doc, self},
+    results::{InsertOneResult, CollectionType},
     Client, Collection,
 };
 
-use crate::models::user_model::User;
+use crate::models::user_model::{User, TokenClaims, LoginUserSchema};
 
 #[derive(Debug,Clone)]
 pub struct MongoRepo {
@@ -52,5 +54,40 @@ impl MongoRepo {
 
         Ok(user)
     }
+
+    pub async fn find_by_email(&self, data: LoginUserSchema) -> Result<Option<User>, Error> {
+
+        let user = self
+            .col
+            .find_one(doc! {"email": data.email}, None)
+            .await.ok()
+            .expect("Error finding");
+
+        Ok(user)
+    }
+
+    fn user_informations(&self, token: &str) -> Result<Option<User>, Error> {
+        
+        let secret_key = "secret";
+
+        let _var = secret_key;
+        let key = _var.as_bytes();
+        let _decode = decode::<TokenClaims>(
+            token,
+            &DecodingKey::from_secret(key),
+            &Validation::new(Algorithm::HS256),
+        );
+
+        match _decode {
+            Ok(decoded) => {
+                match self.find_by_email(LoginUserSchema { email: decoded.claims.sub.to_string(), password: todo!() }) {
+                    Ok(user) => Ok(user),
+                    Err(_) => Err(())
+                }
+            }
+            Err(_) => Err(())
+        }
+    }
+
 
 }

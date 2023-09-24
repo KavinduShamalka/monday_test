@@ -1,73 +1,37 @@
-use core::fmt;
-use std::future::{ready, Ready};
-
-use actix_web::error::ErrorUnauthorized;
-use actix_web::{dev::Payload, Error as ActixWebError};
-use actix_web::{http, FromRequest, HttpMessage, HttpRequest};
-use jsonwebtoken::{decode, DecodingKey, Validation};
-use serde::Serialize;
-
 use crate::models::user_model::TokenClaims;
+use actix_web::error::ErrorUnauthorized;
+use actix_web::{dev, Error, FromRequest, HttpRequest};
+use futures::future::{err, ok, Ready};
+use jsonwebtoken::{decode, Algorithm, DecodingKey, Validation};
 
-#[derive(Debug, Serialize)]
-struct ErrorResponse {
-    status: String,
-    message: String,
-}
+pub struct AuthorizationService;
 
-impl fmt::Display for ErrorResponse {
-    fn fmt(&self, f: &mut fmt::Formatter<'_>) -> fmt::Result {
-        write!(f, "{}", serde_json::to_string(&self).unwrap())
-    }
-}
+impl FromRequest for AuthorizationService {
+    type Error = Error;
+    type Future = Ready<Result<AuthorizationService, Error>>;
+    
 
-pub struct JwtMiddleware {
-    pub user_id: uuid::Uuid,
-}
+    fn from_request(_req: &HttpRequest, _payload: &mut dev::Payload) -> Self::Future {
+        let _auth = _req.headers().get("Authorization");
 
-impl FromRequest for JwtMiddleware {
-    type Error = ActixWebError;
-    type Future = Ready<Result<Self, Self::Error>>;
-    fn from_request(req: &HttpRequest, _: &mut Payload) -> Self::Future {
-        
-        let token = req
-            .cookie("token")
-            .map(|c| c.value().to_string())
-            .or_else(|| {
-                req.headers()
-                    .get(http::header::AUTHORIZATION)
-                    .map(|h| h.to_str().unwrap().split_at(7).1.to_string())
-            });
+        let secret_key = "secret";
 
-        if token.is_none() {
-            let json_error = ErrorResponse {
-                status: "fail".to_string(),
-                message: "You are not logged in, please provide token".to_string(),
-            };
-            return ready(Err(ErrorUnauthorized(json_error)));
-        }
-
-        let jwt_secret = "secret";
-
-        let claims = match decode::<TokenClaims>(
-            &token.unwrap(),
-            &DecodingKey::from_secret(jwt_secret.as_ref()),
-            &Validation::default(),
-        ) {
-            Ok(c) => c.claims,
-            Err(_) => {
-                let json_error = ErrorResponse {
-                    status: "fail".to_string(),
-                    message: "Invalid token".to_string(),
-                };
-                return ready(Err(ErrorUnauthorized(json_error)));
+        match _auth {
+            Some(_) => {
+                let _split: Vec<&str> = _auth.unwrap().to_str().unwrap().split("Bearer").collect();
+                let token = _split[1].trim();
+                let _var = secret_key;
+                let key = _var.as_bytes();
+                match decode::<TokenClaims>(
+                    token,
+                    &DecodingKey::from_secret(key),
+                    &Validation::new(Algorithm::HS256),
+                ) {
+                    Ok(_token) => ok(AuthorizationService),
+                    Err(_e) => err(ErrorUnauthorized("invalid token!")),
+                }
             }
-        };
-
-        let user_id = uuid::Uuid::parse_str(claims.sub.as_str()).unwrap();
-        req.extensions_mut()
-            .insert::<uuid::Uuid>(user_id.to_owned());
-
-        ready(Ok(JwtMiddleware { user_id }))
+            None => err(ErrorUnauthorized("blocked!")),
+        }
     }
 }

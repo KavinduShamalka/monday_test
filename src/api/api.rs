@@ -1,7 +1,7 @@
-use crate::{auth, repository::mongodb_repo::MongoRepo,
+use crate::{repository::mongodb_repo::MongoRepo,
     models::user_model::{
         User,
-        TokenClaims
+        TokenClaims, LoginUserSchema
     } 
 };
 
@@ -10,7 +10,7 @@ use actix_web::{
     post, 
     web::{Data, Json, self},
     HttpResponse, Responder, cookie::Cookie,
-    cookie::time::Duration as ActixWebDuration, get, HttpRequest, HttpMessage,
+    cookie::time::Duration as ActixWebDuration, get, HttpRequest,
 };
 
 use chrono::{prelude::*, Duration};
@@ -23,6 +23,7 @@ use serde_json::json;
 //register user
 #[post("/user")]
 pub async fn create_user(db: Data<MongoRepo>, new_user: Json<User>) -> HttpResponse {
+
     let data = User {
         id: None,
         name: new_user.name.to_owned(),
@@ -35,13 +36,19 @@ pub async fn create_user(db: Data<MongoRepo>, new_user: Json<User>) -> HttpRespo
         Ok(user) => HttpResponse::Ok().json(user),
         Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     }
+
 }
 
 
 #[post("/login/{id}")]
 async fn login_user_handler(
-    path: web::Path<String>
+    data: Json<LoginUserSchema>,
+    path: web::Path<String>,
+    db: Data<MongoRepo>
 ) -> impl Responder {
+
+    let check = db.find_by_email(data.email);
+    
 
     let jwt_secret = "secret";
 
@@ -49,6 +56,7 @@ async fn login_user_handler(
 
     let now = Utc::now();
     let iat = now.timestamp() as usize;
+    
     let exp = (now + Duration::minutes(60)).timestamp() as usize;
     let claims: TokenClaims = TokenClaims {
         sub: id,
@@ -74,39 +82,18 @@ async fn login_user_handler(
         .json(json!({"status": "success", "token": token}))
 }
 
-#[get("/auth/logout")]
-async fn logout_handler(_: auth::JwtMiddleware) -> impl Responder {
-    let cookie = Cookie::build("token", "")
-        .path("/")
-        .max_age(ActixWebDuration::new(-1, 0))
-        .http_only(true)
-        .finish();
 
-    HttpResponse::Ok()
-        .cookie(cookie)
-        .json(json!({"status": "success"}))
+#[get("/userInformations")]
+async fn user_informations_get(_req: HttpRequest, db: Data<MongoRepo>) -> HttpResponse {
+    let _auth = _req.headers().get("Authorization");
+    let _split: Vec<&str> = _auth.unwrap().to_str().unwrap().split("Bearer").collect();
+    let token = _split[1].trim();
+   
+    match db.user_informations(token) {
+        Ok(result) => HttpResponse::Ok().json(result.unwrap()),
+        Err(err) => HttpResponse::Ok().json(err),
+    }
 }
 
-// #[get("/users/me")]
-// async fn get_me_handler(
-//     req: HttpRequest,
-//     data: web::Data<AppState>,
-//     _: auth::JwtMiddleware,
-// ) -> impl Responder {
-//     let ext = req.extensions();
-//     let user_id = ext.get::<uuid::Uuid>().unwrap();
 
-//     let user = sqlx::query_as!(User, "SELECT * FROM users WHERE id = $1", user_id)
-//         .fetch_one(&data.db)
-//         .await
-//         .unwrap();
 
-//     let json_response = serde_json::json!({
-//         "status":  "success",
-//         "data": serde_json::json!({
-//             "user": filter_user_record(&user)
-//         })
-//     });
-
-//     HttpResponse::Ok().json(json_response)
-// }
