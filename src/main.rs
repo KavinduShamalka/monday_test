@@ -1,11 +1,13 @@
 mod repository;
 mod models;
 mod api;
+mod auth;
+
 
 use actix_cors::Cors;
 use actix_web::{ web::Data, middleware::Logger, get, App, HttpResponse, HttpServer, Responder, http::header};
 use repository::mongodb_repo::MongoRepo;
-use api::api::create_user;
+use api::api::{create_user, login_user_handler, logout_handler};
 
 
 #[get("/test")]
@@ -14,9 +16,7 @@ async fn test() -> impl Responder {
     HttpResponse::Ok().json(serde_json::json!({"status": "success", "message": MESSAGE}))
 }
 
-pub struct AppState {
-    db: MongoRepo
-}
+
 
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
@@ -29,7 +29,6 @@ async fn main() -> std::io::Result<()> {
     let db_data = Data::new(db);
 
     println!("Server started successfully");
-
 
     HttpServer::new(move || {
 
@@ -49,6 +48,8 @@ async fn main() -> std::io::Result<()> {
             .wrap(cors)
             .service(test)
             .service(create_user)
+            .service(login_user_handler)
+            .service(logout_handler)
     })
     .bind(("127.0.0.1", 8090))?
     .run()

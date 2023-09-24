@@ -2,17 +2,15 @@ use std::env;
 extern crate dotenv;
 use dotenv::dotenv;
 
-// use futures::TryStreamExt;
-
 use mongodb::{
     bson::extjson::de::Error,
-    results::InsertOneResult, //, UpdateResult, DeleteResult //modify here
+    results::InsertOneResult,
     Client, Collection,
 };
 
 use crate::models::user_model::User;
 
-#[derive(Clone)]
+#[derive(Debug,Clone)]
 pub struct MongoRepo {
     col: Collection<User>,
 }
@@ -34,7 +32,7 @@ impl MongoRepo {
         MongoRepo { 
             col
         }
-        
+
     }
 
     pub async fn create_user(&self, new_user: User) -> Result<InsertOneResult, Error> {
@@ -54,17 +52,5 @@ impl MongoRepo {
 
         Ok(user)
     }
-
-    // pub async fn get_user(&self, id: &String) -> Result<User, Error> {
-    //     let obj_id = ObjectId::parse_str(id).unwrap();
-    //     let filter = doc! {"_id": obj_id};
-    //     let user_detail = self
-    //         .col
-    //         .find_one(filter, None)
-    //         .await
-    //         .ok()
-    //         .expect("Error getting user's detail");
-    //     Ok(user_detail.unwrap())
-    // }
 
 }
