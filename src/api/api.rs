@@ -1,7 +1,7 @@
 use crate::{repository::mongodb_repo::MongoRepo,
     models::user_model::{
         User,
-        TokenClaims, LoginUserSchema
+        TokenClaims
     } 
 };
 
@@ -42,15 +42,11 @@ pub async fn create_user(db: Data<MongoRepo>, new_user: Json<User>) -> HttpRespo
 
 #[post("/login/{id}")]
 async fn login_user_handler(
-    data: Json<LoginUserSchema>,
-    path: web::Path<String>,
-    db: Data<MongoRepo>
+    path: web::Path<String>
 ) -> impl Responder {
 
-    let check = db.find_by_email(data.email);
-    
 
-    let jwt_secret = "secret";
+    let jwt_secret = "secret".to_owned();
 
     let id = path.into_inner();
 
@@ -83,13 +79,13 @@ async fn login_user_handler(
 }
 
 
-#[get("/userInformations")]
+#[get("/get")]
 async fn user_informations_get(_req: HttpRequest, db: Data<MongoRepo>) -> HttpResponse {
     let _auth = _req.headers().get("Authorization");
     let _split: Vec<&str> = _auth.unwrap().to_str().unwrap().split("Bearer").collect();
     let token = _split[1].trim();
    
-    match db.user_informations(token) {
+    match db.user_informations(token).await {
         Ok(result) => HttpResponse::Ok().json(result.unwrap()),
         Err(err) => HttpResponse::Ok().json(err),
     }

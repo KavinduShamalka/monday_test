@@ -1,16 +1,15 @@
 use std::env;
 extern crate dotenv;
-use actix_web::dev::Response;
 use dotenv::dotenv;
 
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use mongodb::{
-    bson::{extjson::de::Error, doc, self},
-    results::{InsertOneResult, CollectionType},
+    bson::{extjson::de::Error, doc},
+    results::InsertOneResult,
     Client, Collection,
 };
 
-use crate::models::user_model::{User, TokenClaims, LoginUserSchema};
+use crate::models::user_model::{User, TokenClaims, Response};
 
 #[derive(Debug,Clone)]
 pub struct MongoRepo {
@@ -55,37 +54,65 @@ impl MongoRepo {
         Ok(user)
     }
 
-    pub async fn find_by_email(&self, data: LoginUserSchema) -> Result<Option<User>, Error> {
+    // pub async fn find_by_email(&self, data: String) -> Result<Option<User>, Error> {
 
-        let user = self
-            .col
-            .find_one(doc! {"email": data.email}, None)
-            .await.ok()
-            .expect("Error finding");
+    //     let id = data;
 
-        Ok(user)
-    }
+    //     let user = self
+    //         .col
+    //         .find_one( doc! {"_id" : id }, None)
+    //         .await.ok()
+    //         .expect("Error finding");
 
-    fn user_informations(&self, token: &str) -> Result<Option<User>, Error> {
+    //     Ok(user)
+    // }
+
+    pub async fn user_informations(&self, token: &str) -> Result<Option<User>, Response> {
         
-        let secret_key = "secret";
+        let secret_key = "secret".to_owned();
 
-        let _var = secret_key;
-        let key = _var.as_bytes();
-        let _decode = decode::<TokenClaims>(
+        let var = secret_key;
+        let key = var.as_bytes();
+        let decode = decode::<TokenClaims>(
             token,
             &DecodingKey::from_secret(key),
             &Validation::new(Algorithm::HS256),
-        );
+        ); 
 
-        match _decode {
+        match decode {
             Ok(decoded) => {
-                match self.find_by_email(LoginUserSchema { email: decoded.claims.sub.to_string(), password: todo!() }) {
-                    Ok(user) => Ok(user),
-                    Err(_) => Err(())
-                }
+
+                println!("{:?}", decoded.claims.sub.to_owned());
+
+                let id = decoded.claims.sub.to_string();
+
+                let user = self
+                    .col
+                    .find_one( doc! {"_id" : id }, None)
+                    .await.ok()
+                    .expect("Error finding");
+
+                println!("{:?}", user);
+        
+                Ok(user)
+
+                // match self.find_by_email((decoded.claims.sub.to_owned()).parse().unwrap()).await {
+                //     Ok(user) => {
+                //         println!("{:?}", user);
+                //         Ok(user)
+                //     },
+                //     Err(_) => Err(Response {
+                //         status: false,
+                //         message: "Something Wrong".to_string(),
+                //     }),
+                // }
+
+
             }
-            Err(_) => Err(())
+            Err(_) => Err(Response {
+                status: false,
+                message: "Invalid Token".to_string(),
+            }),
         }
     }
 

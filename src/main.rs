@@ -7,7 +7,7 @@ mod auth;
 use actix_cors::Cors;
 use actix_web::{ web::Data, middleware::Logger, get, App, HttpResponse, HttpServer, Responder, http::header};
 use repository::mongodb_repo::MongoRepo;
-use api::api::{create_user, login_user_handler};
+use api::api::{create_user, login_user_handler, user_informations_get};
 
 
 #[get("/test")]
@@ -49,6 +49,7 @@ async fn main() -> std::io::Result<()> {
             .service(test)
             .service(create_user)
             .service(login_user_handler)
+            .service(user_informations_get)
             
     })
     .bind(("127.0.0.1", 8090))?
