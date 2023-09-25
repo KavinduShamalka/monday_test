@@ -31,11 +31,12 @@ pub async fn create_user(db: Data<MongoRepo>, new_user: Json<User>) -> HttpRespo
         email: new_user.email.to_owned(),
     };
 
-    let user_detail = db.create_user(data).await;
-    match user_detail {
-        Ok(user) => HttpResponse::Ok().json(user),
-        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-    }
+    // let user_detail = db.create_user(data).await;
+    // match user_detail {
+    //     Ok(user) => HttpResponse::Ok().json(user),
+    //     Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+    // }
+    HttpResponse::Ok().json(db.create_user(new_user.into_inner()))
 
 }
 

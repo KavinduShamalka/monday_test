@@ -36,7 +36,7 @@ impl MongoRepo {
 
     }
 
-    pub async fn create_user(&self, new_user: User) -> Result<InsertOneResult, Error> {
+    pub async fn create_user(&self, new_user: User) -> Response {
 
         let doc = User {
             id: None,
@@ -45,27 +45,51 @@ impl MongoRepo {
             pwd: new_user.pwd,
         };
 
+        let _exist = self
+            .find_by_email((&doc.email).parse().unwrap())
+            .await.unwrap();
+        match _exist {
+            Some(_) => {
+                Response {
+                    message: "This e-mail is using by some user, please enter another e-mail."
+                        .to_string(),
+                    status: false,
+                }
+            },
+            None => {
+                let user = self
+                .col
+                .insert_one(doc, None)
+                .await.ok()
+                .expect("Error creating user");
+    
+                println!("{:?}", user);
+                
+                Response {
+                    message: "User".to_string(),
+                    status: true,
+                }
+            }
+
+
+
+
+        }
+
+    }
+
+    pub async fn find_by_email(&self, data: String) -> Result<Option<User>, Error> {
+
+        let id = data;
+
         let user = self
             .col
-            .insert_one(doc, None)
+            .find_one( doc! {"_id" : id }, None)
             .await.ok()
-            .expect("Error creating user");
+            .expect("Error finding");
 
         Ok(user)
     }
-
-    // pub async fn find_by_email(&self, data: String) -> Result<Option<User>, Error> {
-
-    //     let id = data;
-
-    //     let user = self
-    //         .col
-    //         .find_one( doc! {"_id" : id }, None)
-    //         .await.ok()
-    //         .expect("Error finding");
-
-    //     Ok(user)
-    // }
 
     pub async fn user_informations(&self, token: &str) -> Result<Option<User>, Response> {
         
