@@ -36,36 +36,97 @@ impl MongoRepo {
 
     }
 
-    pub async fn create_user(&self, new_user: User) -> Result<InsertOneResult, Error> {
+    // pub async fn create_user(&self, new_user: User) -> Result<InsertOneResult, Error> {
 
-        let doc = User {
-            id: None,
-            name: new_user.name,
-            email: new_user.email,
-            pwd: new_user.pwd,
-        };
+    //     let doc = User {
+    //         id: None,
+    //         name: new_user.name,
+    //         email: new_user.email,
+    //         pwd: new_user.pwd,
+    //     };
 
-        let user = self
-            .col
-            .insert_one(doc, None)
-            .await.ok()
-            .expect("Error creating user");
+    //     let user = self
+    //         .col
+    //         .insert_one(doc, None)
+    //         .await.ok()
+    //         .expect("Error creating user");
     
 
-        Ok(user)
+    //     Ok(user)
+    // }
+
+    pub async fn create_user(&self, new_user: User) -> Response {
+
+        let exist = self.check_email(&new_user.email);
+
+        if true {
+            return Response {
+                message: "This e-mail is using by some user, please enter another e-mail."
+                    .to_string(),
+                status: false,
+            };
+        } else {
+            let doc = User {
+                id: None,
+                name: new_user.name,
+                email: new_user.email,
+                pwd: new_user.pwd,
+            };
+    
+            let user = self
+                .col
+                .insert_one(doc, None)
+                .await.ok()
+                .expect("Error creating user"); 
+
+             Response {
+                        status: true,
+                        message: "Register successful.".to_string(),
+             }
+        }
+
     }
 
-    pub async fn find_by_email(&self, data: String) -> Result<Option<User>, Error> {
+    pub async fn find_by_email(&self, email: &String, password: &String) -> Option<ObjectId> {
 
-        let id = data;
+        let check_email = email;
+        let check_password = password;
 
         let user = self
             .col
-            .find_one( doc! {"_id" : id }, None)
+            .find_one( doc! {
+                "email" : check_email,
+                "pwd": check_password 
+            }, None)
             .await.ok()
             .expect("Error finding");
 
-        Ok(user)
+        let user_id = match user {
+            Some(user) => user.id,
+            None => todo!(""),
+        };
+    
+        user_id
+    }
+
+    pub async fn check_email(&self, email: &String) -> Option<ObjectId> {
+
+        let check_email = email;
+
+        let user = self
+            .col
+            .find_one( doc! {
+                "email" : check_email,
+            }, None)
+            .await.ok()
+            .expect("Error finding");
+
+        let user_id = match user {
+            Some(user) => user.id,
+            None => todo!(""),
+        };
+    
+        user_id
     }
 
     pub async fn user_informations(&self, token: &str) -> Result<Option<User>, Response> {
@@ -74,6 +135,7 @@ impl MongoRepo {
 
         let var = secret_key;
         let key = var.as_bytes();
+        
         let decode = decode::<TokenClaims>(
             token,
             &DecodingKey::from_secret(key),
@@ -87,11 +149,13 @@ impl MongoRepo {
 
                 let id = decoded.claims.sub;
 
-                let bson_id = ObjectId::parse_str(id).unwrap();
+                // let bson_id = ObjectId::parse_str(id).unwrap();
+
+                // let bson_id = ObjectId::parse_str(id).unwrap();
 
                 let user = self
                     .col
-                    .find_one( doc! {"_id" : bson_id }, None)
+                    .find_one( doc! {"_id" : id }, None)
                     .await.ok()
                     .expect("Error finding");
 

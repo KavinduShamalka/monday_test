@@ -1,7 +1,7 @@
 use crate::{repository::mongodb_repo::MongoRepo,
     models::user_model::{
         User,
-        TokenClaims
+        TokenClaims, LoginUserSchema
     } 
 };
 
@@ -35,29 +35,24 @@ pub async fn create_user(db: Data<MongoRepo>, new_user: Json<User>) -> HttpRespo
         Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     }
 
-    // let res = db.create_user(new_user.into_inner());
-
-    // HttpResponse::Ok().json(json!({"result: res"}))
-
-    // let user_detail = db.create_user(data).await;
-
-    // match user_detail {
-    //     // Ok(result) => HttpResponse::Ok().json(result.unwrap()),
-    //     Ok(user) => HttpResponse::Ok().json(user),
-    //     Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
-    // }
-
 }
 
 
-#[post("/login/{id}")]
+#[post("/login")]
 async fn login_user_handler(
-    path: web::Path<String>
+    data: Json<LoginUserSchema>,
+    db: Data<MongoRepo>
 ) -> impl Responder {
 
-    let jwt_secret = "secret".to_owned();
+    let email = &data.email;
+    let password = &data.password;
 
-    let id = path.into_inner();
+    let id = match db.find_by_email(email, password).await {
+        Some(id) => id,
+        None => !todo!(),
+    };
+    
+    let jwt_secret = "secret".to_owned();
 
     let now = Utc::now();
     let iat = now.timestamp() as usize;

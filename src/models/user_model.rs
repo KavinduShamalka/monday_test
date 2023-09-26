@@ -18,7 +18,7 @@ pub struct LoginUserSchema {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenClaims {
-    pub sub: String,
+    pub sub: ObjectId,
     pub iat: usize,
     pub exp: usize,
 }
