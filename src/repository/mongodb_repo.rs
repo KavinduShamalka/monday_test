@@ -4,7 +4,7 @@ use dotenv::dotenv;
 
 use jsonwebtoken::{decode, DecodingKey, Validation, Algorithm};
 use mongodb::{
-    bson::{extjson::de::Error, doc},
+    bson::{extjson::de::Error, doc, oid::ObjectId},
     results::InsertOneResult,
     Client, Collection,
 };
@@ -36,7 +36,7 @@ impl MongoRepo {
 
     }
 
-    pub async fn create_user(&self, new_user: User) -> Response {
+    pub async fn create_user(&self, new_user: User) -> Result<InsertOneResult, Error> {
 
         let doc = User {
             id: None,
@@ -45,37 +45,14 @@ impl MongoRepo {
             pwd: new_user.pwd,
         };
 
-        let _exist = self
-            .find_by_email((&doc.email).parse().unwrap())
-            .await.unwrap();
-        match _exist {
-            Some(_) => {
-                Response {
-                    message: "This e-mail is using by some user, please enter another e-mail."
-                        .to_string(),
-                    status: false,
-                }
-            },
-            None => {
-                let user = self
-                .col
-                .insert_one(doc, None)
-                .await.ok()
-                .expect("Error creating user");
+        let user = self
+            .col
+            .insert_one(doc, None)
+            .await.ok()
+            .expect("Error creating user");
     
-                println!("{:?}", user);
-                
-                Response {
-                    message: "User".to_string(),
-                    status: true,
-                }
-            }
 
-
-
-
-        }
-
+        Ok(user)
     }
 
     pub async fn find_by_email(&self, data: String) -> Result<Option<User>, Error> {
@@ -108,29 +85,19 @@ impl MongoRepo {
 
                 println!("{:?}", decoded.claims.sub.to_owned());
 
-                let id = decoded.claims.sub.to_string();
+                let id = decoded.claims.sub;
+
+                let bson_id = ObjectId::parse_str(id).unwrap();
 
                 let user = self
                     .col
-                    .find_one( doc! {"_id" : id }, None)
+                    .find_one( doc! {"_id" : bson_id }, None)
                     .await.ok()
                     .expect("Error finding");
 
                 println!("{:?}", user);
         
                 Ok(user)
-
-                // match self.find_by_email((decoded.claims.sub.to_owned()).parse().unwrap()).await {
-                //     Ok(user) => {
-                //         println!("{:?}", user);
-                //         Ok(user)
-                //     },
-                //     Err(_) => Err(Response {
-                //         status: false,
-                //         message: "Something Wrong".to_string(),
-                //     }),
-                // }
-
 
             }
             Err(_) => Err(Response {

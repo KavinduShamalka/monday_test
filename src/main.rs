@@ -17,7 +17,6 @@ async fn test() -> impl Responder {
 }
 
 
-
 #[actix_web::main]
 async fn main() -> std::io::Result<()> {
     if std::env::var_os("RUST_LOG").is_none() {

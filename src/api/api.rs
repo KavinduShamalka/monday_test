@@ -18,8 +18,6 @@ use jsonwebtoken::{encode, Header, EncodingKey};
 use serde_json::json;
 
 
-
-
 //register user
 #[post("/user")]
 pub async fn create_user(db: Data<MongoRepo>, new_user: Json<User>) -> HttpResponse {
@@ -31,12 +29,23 @@ pub async fn create_user(db: Data<MongoRepo>, new_user: Json<User>) -> HttpRespo
         email: new_user.email.to_owned(),
     };
 
+    let user_detail = db.create_user(data).await;
+    match user_detail {
+        Ok(user) => HttpResponse::Ok().json(user),
+        Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
+    }
+
+    // let res = db.create_user(new_user.into_inner());
+
+    // HttpResponse::Ok().json(json!({"result: res"}))
+
     // let user_detail = db.create_user(data).await;
+
     // match user_detail {
+    //     // Ok(result) => HttpResponse::Ok().json(result.unwrap()),
     //     Ok(user) => HttpResponse::Ok().json(user),
     //     Err(err) => HttpResponse::InternalServerError().body(err.to_string()),
     // }
-    HttpResponse::Ok().json(db.create_user(new_user.into_inner()))
 
 }
 
@@ -45,7 +54,6 @@ pub async fn create_user(db: Data<MongoRepo>, new_user: Json<User>) -> HttpRespo
 async fn login_user_handler(
     path: web::Path<String>
 ) -> impl Responder {
-
 
     let jwt_secret = "secret".to_owned();
 
@@ -87,7 +95,7 @@ async fn user_informations_get(_req: HttpRequest, db: Data<MongoRepo>) -> HttpRe
     let token = _split[1].trim();
    
     match db.user_informations(token).await {
-        Ok(result) => HttpResponse::Ok().json(result.unwrap()),
+        Ok(result) => HttpResponse::Ok().json(json!({"result": result})),
         Err(err) => HttpResponse::Ok().json(err),
     }
 }
