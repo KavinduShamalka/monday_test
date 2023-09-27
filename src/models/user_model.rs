@@ -1,7 +1,7 @@
 use mongodb::bson::oid::ObjectId;
 use serde::{Deserialize, Serialize};
 
-#[derive(Debug, Serialize, Deserialize)]
+#[derive(Debug, Serialize, Deserialize, Clone)]
 pub struct User {
     #[serde(rename = "_id", skip_serializing_if = "Option::is_none")]
     pub id: Option<ObjectId>,
@@ -18,7 +18,13 @@ pub struct LoginUserSchema {
 
 #[derive(Debug, Serialize, Deserialize)]
 pub struct TokenClaims {
-    pub sub: String,
+    pub sub: ObjectId,
     pub iat: usize,
     pub exp: usize,
+}
+
+#[derive(Serialize, Deserialize, Debug)]
+pub struct Response {
+    pub message: String,
+    pub status: bool,
 }
