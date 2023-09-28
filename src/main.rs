@@ -3,11 +3,11 @@ mod models;
 mod api;
 mod auth;
 
-
-use actix_cors::Cors;
-use actix_web::{ web::Data, middleware::Logger, get, App, HttpResponse, HttpServer, Responder, http::header};
+use actix_web::{ web::Data, middleware::Logger, get, App, HttpResponse, HttpServer, Responder};
 use repository::mongodb_repo::MongoRepo;
-use api::api::{create_user, login_user_handler, user_informations_get};
+use api::api::{login_user_handler, user_informations_get, register_user_handler};
+
+use crate::api::api::{update_user, delete_user};
 
 
 #[get("/test")]
@@ -31,24 +31,15 @@ async fn main() -> std::io::Result<()> {
 
     HttpServer::new(move || {
 
-        let cors = Cors::default()
-            .allowed_origin("http://localhost:3000")
-            .allowed_methods(vec!["GET", "POST"])
-            .allowed_headers(vec![
-                header::CONTENT_TYPE,
-                header::AUTHORIZATION,
-                header::ACCEPT,
-            ])
-            .supports_credentials();
-
         App::new()
             .app_data(db_data.clone())//Db connection
             .wrap(Logger::default())
-            .wrap(cors)
             .service(test)
-            .service(create_user)
+            .service(register_user_handler)
             .service(login_user_handler)
             .service(user_informations_get)
+            .service(update_user)
+            .service(delete_user)
             
     })
     .bind(("127.0.0.1", 8090))?
